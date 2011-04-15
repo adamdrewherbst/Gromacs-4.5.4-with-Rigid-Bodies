@@ -822,6 +822,68 @@ void do_force(FILE *fplog,t_commrec *cr,
         }
     }
 
+    /* calculate the forces and increment the velocities of all rigid body groups */
+#ifndef RIGID_DEBUG
+    //#define RIGID_DEBUG
+#endif
+    t_rigid *rigid = inputrec->rigid;
+    if (rigid && rigid->stepcnt > 0) {
+        /* add each rigid dimension to the summing buffer */
+        int i,d,count = 0,hasRigid;
+        for(i = 0; i < inputrec->opts.ngfrz; i++) {
+            hasRigid = 0;
+            for(d = 0; d < DIM; d++) {
+                if(inputrec->opts.nFreeze[i][d] == 2) {
+                    hasRigid = 1;
+                    rigid->dbuf[count++] = rigid->force[i][d];
+                }
+            }
+            if(hasRigid) {
+                rigid->dbuf[count++] = rigid->grpcnt[i];
+                rigid->dbuf[count++] = rigid->mass[i];
+#ifdef RIGID_DEBUG                
+                printf("%d (%d) BEFORE: group %d has force %f %f %f, vel %f %f %f, mass %f (%d)\n",
+                       cr->nodeid, step, i, rigid->force[i][0], rigid->force[i][1], rigid->force[i][2],
+                       rigid->vel[i][0], rigid->vel[i][1], rigid->vel[i][2], rigid->mass[i], rigid->grpcnt[i]);
+#endif                       
+            }
+        }
+        /* sum them in parallel */
+        if(cr && PAR(cr)) {
+            gmx_sumd(count, rigid->dbuf, cr);
+        }
+        /* extract the summed forces and masses, and increment the velocities */
+        if(MASTER(cr)) {
+            int x = 3;
+        }
+        count = 0;
+        double grpMass, grpCnt;
+        for(i = 0; i < inputrec->opts.ngfrz; i++) {
+            hasRigid = 0;
+            for(d = 0; d < DIM; d++) {
+                if(inputrec->opts.nFreeze[i][d] == 2) {
+                    hasRigid = 1;
+                    rigid->force[i][d] = rigid->dbuf[count++];
+                }
+            }
+            if(hasRigid) {
+                grpCnt = rigid->dbuf[count++];
+                grpMass = rigid->dbuf[count++];
+                for(d = 0; d < DIM; d++) {
+                    /* damp the previous velocity to prevent unstable oscillations */
+                    rigid->vel[i][d] = 0.8 * rigid->vel[i][d] + rigid->force[i][d] / (grpMass * rigid->stepcnt);
+                }
+#ifdef RIGID_DEBUG                
+                printf("%d (%d) AFTER: group %d has force %f %f %f, vel %f %f %f, mass %f (%d)\n",
+                       cr->nodeid, step, i, rigid->force[i][0], rigid->force[i][1], rigid->force[i][2],
+                       rigid->vel[i][0], rigid->vel[i][1], rigid->vel[i][2], grpMass, (int)(grpCnt+.001));
+#endif
+                for(d = 0; d < DIM; d++) rigid->force[i][d] = 0;
+            }
+        }
+        rigid->stepcnt = 0;
+    }
+
     if (inputrec->ePull == epullUMBRELLA || inputrec->ePull == epullCONST_F)
     {
         /* Calculate the center of mass forces, this requires communication,

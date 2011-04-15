@@ -1027,15 +1027,15 @@ static void make_local_pull_group(gmx_ga2la_t ga2la,
     if (ii >= start && ii < end) {
       /* This is a home atom, add it to the local pull group */
       if (pg->nat_loc >= pg->nalloc_loc) {
-	pg->nalloc_loc = over_alloc_dd(pg->nat_loc+1);
-	srenew(pg->ind_loc,pg->nalloc_loc);
-	if (pg->epgrppbc == epgrppbcCOS || pg->weight) {
-	  srenew(pg->weight_loc,pg->nalloc_loc);
-	}
+          pg->nalloc_loc = over_alloc_dd(pg->nat_loc+1);
+          srenew(pg->ind_loc,pg->nalloc_loc);
+          if (pg->epgrppbc == epgrppbcCOS || pg->weight) {
+              srenew(pg->weight_loc,pg->nalloc_loc);
+          }
       }
       pg->ind_loc[pg->nat_loc] = ii;
       if (pg->weight) {
-	  pg->weight_loc[pg->nat_loc] = pg->weight[i];
+          pg->weight_loc[pg->nat_loc] = pg->weight[i];
       }
       pg->nat_loc++;
     }
@@ -1183,7 +1183,7 @@ static void init_pull_group_index(FILE *fplog,t_commrec *cr,
 	      "         For pulling the whole group will be frozen.\n\n",
 	      g);
     }
-    pg->invtm  = 0.0;
+    pg->invtm  = 1.0;
     pg->wscale = 1.0;
   }
 }

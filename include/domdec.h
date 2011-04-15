@@ -141,6 +141,12 @@ void dd_atom_spread_real(gmx_domdec_t *dd,real v[]);
 void dd_atom_sum_real(gmx_domdec_t *dd,real v[]);
 /* Sum the contributions to a real for each atom over the neighboring cells. */
 
+void init_local_rigid_groups(t_inputrec *ir, t_mdatoms *mdatoms, t_state *state_local);
+/* Initialize the rigid body groups */
+
+void get_local_rigid_groups(t_inputrec *ir, t_mdatoms *mdatoms);
+/* Update the rigid body groups according to the current domain decomposition */
+
 void dd_partition_system(FILE            *fplog,
                                 gmx_large_int_t      step,
                                 t_commrec       *cr,

@@ -460,8 +460,10 @@ void pull_calc_coms(t_commrec *cr,
 		g,wmass,wwmass,pgrp->invtm);
       }
     }
+//	  printf("Pull group %d with %d atoms has wmass %f wwmass %f invtm %f, COM distance %f %f %f\n",
+//			 g, pgrp->nat, wmass, wwmass, pgrp->invtm, pgrp->x[0], pgrp->x[1], pgrp->x[2]);
   }
-  
+	
   if (PULL_CYL(pull)) {
     /* Calculate the COMs for the cyclinder reference groups */
     make_cyl_refgrps(cr,pull,md,pbc,t,x,xp);

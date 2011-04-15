@@ -1367,7 +1367,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             dd_make_local_pull_groups(NULL,ir->pull,mdatoms);
         }
     }
-
+    
     if (DOMAINDECOMP(cr))
     {
         /* Distribute the charge groups over the nodes from the master node */
@@ -1379,6 +1379,9 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     }
 
     update_mdatoms(mdatoms,state->lambda);
+    
+    /* The rigid body groups can be initialized now that the atom data is there */
+    init_local_rigid_groups(ir, mdatoms, state);
 
     if (MASTER(cr))
     {

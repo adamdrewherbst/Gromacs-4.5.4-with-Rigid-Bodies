@@ -8149,6 +8149,93 @@ void print_dd_statistics(t_commrec *cr,t_inputrec *ir,FILE *fplog)
     }
 }
 
+void get_local_rigid_groups(t_inputrec *ir, t_mdatoms *mdatoms) {
+    /* redetermine the number and mass of local atoms in each rigid body group */
+    int i, gf;
+    for(i = 0; i < ir->opts.ngfrz; i++) {
+        ir->rigid->grpcnt[i] = 0;
+        ir->rigid->mass[i] = 0;
+    }
+    for(i = 0; i < mdatoms->homenr; i++) {
+        gf = mdatoms->cFREEZE[i];
+        ir->rigid->grpcnt[gf]++;
+        ir->rigid->mass[gf] += mdatoms->massT[i];
+    }
+}
+
+void init_local_rigid_groups(t_inputrec *ir, t_mdatoms *mdatoms, t_state *state_local)
+{
+    /* calculate the number of rigid body groups and total rigid dimensions */
+    int ngrig = 0, ndrig = 0, rig, i, d;
+    for(i = 0; i < ir->opts.ngfrz; i++) {
+        rig = 0;
+        for(d = 0; d < DIM; d++) {
+            if(ir->opts.nFreeze[i][d] == 2) {
+                ndrig++;
+                rig = 1;
+            }
+        }
+        if(rig) ngrig++;
+    }
+    if(ngrig == 0) {
+        ir->rigid = NULL;
+        return;
+    }
+    
+    /* Initialize the rigid body state */
+    snew(ir->rigid, 1);
+    t_rigid *rigid = ir->rigid;
+    snew(rigid->grpcnt, ir->opts.ngfrz);
+    snew(rigid->mass, ir->opts.ngfrz);
+    snew(rigid->force, ir->opts.ngfrz);
+    snew(rigid->vel, ir->opts.ngfrz);
+    rigid->stepcnt = 0;
+    
+    /* For summing, the buffer holds the mass and atom count of each rigid group, and force on each rigid dimension */
+    snew(rigid->dbuf, ndrig + 2*ngrig);
+    
+    /* calculate the local mass of each group, initialize the force to zero, and set the velocity to the average of all atoms' initial velocities */
+    for(i = 0; i < ir->opts.ngfrz; i++) {
+        rigid->grpcnt[i] = 0;
+        rigid->mass[i] = 0;
+        for(d = 0; d < DIM; d++) {
+            rigid->force[i][d] = 0;
+            rigid->vel[i][d] = 0;
+        }
+    }
+    for(i = 0; i < mdatoms->homenr; i++) {
+        int gf = mdatoms->cFREEZE[i];
+        rigid->grpcnt[gf]++;
+        rigid->mass[gf] += mdatoms->massT[i];
+        /* initialize the velocity of each rigid dimension to the average over all home atoms */
+        //        for(d = 0; d < DIM; d++) {
+        //            if(ir->opts.nFreeze[gf][d] == 2)
+        //                rigid->vel[gf][d] += state_local->v[i][d];
+        //        }
+    }
+    for(i = 0; i < ir->opts.ngfrz; i++) {
+        if(rigid->grpcnt[i] > 0) {
+            for(d = 0; d < DIM; d++) rigid->vel[i][d] /= rigid->grpcnt[i];
+        }
+    }
+    /*    char msg[500], app[500];
+     sprintf(msg, "Thread %d has %d atoms and %d freeze groups:\n", cr->nodeid, mdatoms->homenr, ir->opts.ngfrz);
+     for(i = 0; i < ir->opts.ngfrz; i++) {
+     sprintf(app, "%d %d %d\tmass %f (%d)\tvel %f %f %f\tforce %f %f %f\n",
+     ir->opts.nFreeze[i][0], ir->opts.nFreeze[i][1], ir->opts.nFreeze[i][2],
+     ir->rigid->mass[i], ir->rigid->grpcnt[i],
+     ir->rigid->vel[i][0], ir->rigid->vel[i][1], ir->rigid->vel[i][2],
+     ir->rigid->force[i][0], ir->rigid->force[i][1], ir->rigid->force[i][2]);
+     strncat(msg, app, 500);
+     }
+     sprintf(app, "Address of grpcnt is %p\n", ir->rigid->grpcnt);
+     strncat(msg, app, 500);
+     printf("%s\n", msg);
+     */    
+    
+}
+                             
+
 void dd_partition_system(FILE            *fplog,
                          gmx_large_int_t      step,
                          t_commrec       *cr,
@@ -8598,6 +8685,11 @@ void dd_partition_system(FILE            *fplog,
     {
         /* Update the local pull groups */
         dd_make_local_pull_groups(dd,ir->pull,mdatoms);
+    }
+    
+    if (ir->rigid) {
+        /* Update the local rigid body groups */
+        get_local_rigid_groups(ir,mdatoms);
     }
 
     add_dd_statistics(dd);

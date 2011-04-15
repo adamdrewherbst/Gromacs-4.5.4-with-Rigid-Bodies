@@ -123,7 +123,7 @@ static void do_update_md(int start,int nrend,double dt,
                          unsigned short ptype[],unsigned short cFREEZE[],
                          unsigned short cACC[],unsigned short cTC[],
                          rvec x[],rvec xprime[],rvec v[],
-                         rvec f[],matrix M,
+                         rvec f[],matrix M,t_rigid *rigid,
                          gmx_bool bNH,gmx_bool bPR)
 {
   double imass,w_dt;
@@ -216,11 +216,20 @@ static void do_update_md(int start,int nrend,double dt,
               } 
               else 
               {
-                  v[n][d]        = 0.0;
-                  xprime[n][d]   = x[n][d];
+                  /* if the atom is part of a rigid body in this dimension,
+                   * use its group velocity and update its group force */
+                  if(nFreeze[gf][d] == 2) {
+                      rigid->force[gf][d] += f[n][d];
+                      v[n][d]       = rigid->vel[gf][d];
+                      xprime[n][d]  = x[n][d] + v[n][d] * dt;
+                  } else { /* otherwise do not move it at all */
+                      v[n][d]        = 0.0;
+                      xprime[n][d]   = x[n][d];
+                  }
               }
           }
       }
+      if(rigid) rigid->stepcnt++;
   }
 }
 
@@ -1648,7 +1657,7 @@ void update_coords(FILE         *fplog,
                          ekind->tcstat,ekind->grpstat,state->nosehoover_vxi,
                          inputrec->opts.acc,inputrec->opts.nFreeze,md->invmass,md->ptype,
                          md->cFREEZE,md->cACC,md->cTC,
-                         state->x,xprime,state->v,force,M,
+                         state->x,xprime,state->v,force,M,inputrec->rigid,
                          bNH,bPR);
         } 
         else 

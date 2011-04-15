@@ -89,20 +89,24 @@ static void repl_quantity(FILE *fplog,const gmx_multisim_t *ms,
         {
             bDiff = TRUE;
         }
-    }
-    if (bDiff)
-    {
-        if (re->type >= 0 && re->type < ereNR)
+
+        if (bDiff)
         {
-            gmx_fatal(FARGS,"For replica exchange both %s and %s differ",
-                      erename[re->type],erename[ere]);
-        }
-        /* Set the replica exchange type and quantities */
-        re->type = ere;
-        snew(re->q,re->nrepl);
-        for(s=0; s<ms->nsim; s++)
-        {
-            re->q[s] = qall[s];
+            if (re->type >= 0 && re->type < ereNR)
+            {
+                gmx_fatal(FARGS,"For replica exchange both %s and %s differ",
+                          erename[re->type],erename[ere]);
+            }
+            else
+            {
+                /* Set the replica exchange type and quantities */
+                re->type = ere;
+                snew(re->q,re->nrepl);
+                for(s=0; s<ms->nsim; s++)
+                {
+                    re->q[s] = qall[s];
+                }
+            }
         }
     }
 

@@ -2026,10 +2026,15 @@ void do_index(const char* mdparin, const char *ndx,
   snew(ir->opts.nFreeze,nr);
   for(i=k=0; (i<nfreeze); i++)
     for(j=0; (j<DIM); j++,k++) {
-      ir->opts.nFreeze[i][j]=(gmx_strncasecmp(ptr1[k],"Y",1)==0);
+      if(gmx_strncasecmp(ptr1[k],"Y",1)==0) //Y means the group is frozen in this dimension
+        ir->opts.nFreeze[i][j]=1;
+      else if(gmx_strncasecmp(ptr1[k],"R",1)==0) //R means the group is rigid in this dimension
+        ir->opts.nFreeze[i][j]=2;
+      else ir->opts.nFreeze[i][j]=0;
+      
       if (!ir->opts.nFreeze[i][j]) {
 	if (gmx_strncasecmp(ptr1[k],"N",1) != 0) {
-	  sprintf(warnbuf,"Please use Y(ES) or N(O) for freezedim only "
+	  sprintf(warnbuf,"Please use Y(ES) or N(O) or R(IGID) for freezedim only "
 		  "(not %s)", ptr1[k]);
 	  warning(wi,warn_buf);
 	}

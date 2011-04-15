@@ -146,6 +146,15 @@ typedef struct {
 } t_pull;
 
 typedef struct {
+    int     *grpcnt;    /* Number of home atoms in each freeze group */
+    real    *mass;  /* Total mass of the home atoms of each freeze group */
+    rvec    *force; /* Total force on the home atoms of each freeze group for the last stepcnt steps */
+    rvec    *vel;   /* Velocity of each freeze group, calculated using the force summed over all threads */
+    double  *dbuf;  /* Buffer for summing over all threads */
+    int     stepcnt;    /* Number of steps since the last summation and update */
+} t_rigid;
+
+typedef struct {
   int  eI;              /* Integration method 				*/
   gmx_large_int_t nsteps;	/* number of steps to be taken			*/
   int  simulation_part; /* Used in checkpointing to separate chunks */
@@ -267,6 +276,7 @@ typedef struct {
   real wall_ewald_zfac; /* Scaling factor for the box for Ewald         */
   int  ePull;           /* Type of pulling: no, umbrella or constraint  */
   t_pull *pull;         /* The data for center of mass pulling          */
+  t_rigid *rigid;       /* The data for rigid body motion               */
   real cos_accel;       /* Acceleration for viscosity calculation       */
   tensor deform;        /* Triclinic deformation velocities (nm/ps)     */
   int  userint1;        /* User determined parameters                   */
